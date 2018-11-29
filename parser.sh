@@ -1,10 +1,15 @@
 #!/bin/bash
 mkdir -p "data"
+
+if [ ! -f "data/oldData.json" ]; then
+  echo "[]" > "data/oldData.json"
+fi
+
 echo "Fetching data..."
 curl -s https://secure.provincia.tn.it/infovolontariato/Emergenze/Eventi.aspx > eventi
 echo "Parsing HTML..."
 sed -n '/GMapsProperties/,$p' eventi > eventi.js
-sed '/<\//,+1 d' eventi.js eventi.js > eventi2.js
+sed '/<\//,+1 d' eventi.js > eventi2.js
 echo "Parsing JS..."
 js-beautify2 eventi2.js > eventi3.js
 sed -n '/setOptions/,$p' eventi3.js > eventi4.js #Elimina le prime linee
@@ -24,5 +29,5 @@ echo "[" | cat - eventi13.js > eventi14.js
 echo "]" | cat eventi14.js - > eventi15.js
 cat eventi15.js | sed 's/lat/"lat"/g' | sed 's/lng/"lng"/g' | sed 's/type/"type"/g'  > eventi16.js
 echo "Converting JS to JSON..."
-cp eventi16.js newData.json
-rm event*.js
+cp eventi16.js data/newData.json
+rm event*

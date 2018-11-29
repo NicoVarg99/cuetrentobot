@@ -1,10 +1,10 @@
 var fs = require("fs");
-const execSync = require('child_process').execSync;
+//const execSync = require('child_process').execSync;
 console.log("\n *START* \n");
 var downData = JSON.parse(fs.readFileSync("data/newData.json"));
 var oldData = JSON.parse(fs.readFileSync("data/oldData.json"));
 
-code = execSync('./parser.sh');
+//code = execSync('./parser.sh');
 
  for (var i = 0; i < downData.length; i++) {
    console.log("Current element:");
