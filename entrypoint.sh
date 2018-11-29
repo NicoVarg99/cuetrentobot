@@ -1,4 +1,8 @@
 #!/bin/bash
 
-bash "./parser.sh"
-node "index.js"
+while true; do
+  bash "./parser.sh"
+  node "index.js"
+  echo "Sleeping for 1 minute"
+  sleep 60
+done

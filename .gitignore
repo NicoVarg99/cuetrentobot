@@ -62,3 +62,6 @@ typings/
 
 # Data directory
 data/
+
+# Bot token
+token
