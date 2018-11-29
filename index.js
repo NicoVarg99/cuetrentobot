@@ -57,20 +57,25 @@ function checkUpdates() {
 
      //Notify
      if (newData[i].type == 115) {
-       message = "Evento 115 🚒\n";
+       message = "<b>Evento 115</b> 🚒\n";
      } else {
-       message = "Evento 118 🚑\n";
+       message = "<b>Evento 118</b> 🚑\n";
      }
 
-     geocoder.reverse({lat:46.0684761985, lon:11.1169754318}, function(err, res) {
+     lat =  newData[i].lat;
+     long =  newData[i].lng;
+
+     geocoder.reverse({lat: newData[i].lat, lon: newData[i].lng}, function(err, res) {
        if (err) {
+         console.log("ERROR");
          console.log(err);
          message += "Lat: " + newData[i].lat + "\nLng: " + newData[i].lng;
        } else {
-         res = res[0];
-         message += res.formattedAddress;
+         message += res[0].formattedAddress;
        }
-       bot.sendMessage(chatid, message);
+       bot.sendMessage(chatid, message, {parse_mode : "HTML"}).then(() => {
+         bot.sendLocation(chatid, lat, long);
+       });
      });
    }
   }
