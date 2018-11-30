@@ -5,6 +5,10 @@ if [ ! -f "data/oldData.json" ]; then
   echo "[]" > "data/oldData.json"
 fi
 
+if [ ! -f "data/users.json" ]; then
+  echo "[]" > "data/users.json"
+fi
+
 echo "Fetching data..."
 curl -s https://secure.provincia.tn.it/infovolontariato/Emergenze/Eventi.aspx > eventi
 echo "Parsing HTML..."
