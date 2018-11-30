@@ -148,6 +148,7 @@ function checkUpdates() {
   newData = JSON.parse(fs.readFileSync("data/newData.json"));
   oldData = JSON.parse(fs.readFileSync("data/oldData.json"));
 
+  var counter = 0; //Counts new events
   for (var i = 0; i < newData.length; i++) {
    var found = false;
    for (var j = 0; j < oldData.length && !found; j++) {
@@ -157,6 +158,7 @@ function checkUpdates() {
    }
 
    if (!found) {
+     counter++;
      console.log("Not found, adding" + "\n")
      oldData.push({
        lat: newData[i].lat,
@@ -164,11 +166,13 @@ function checkUpdates() {
        type: newData[i].type,
        firstSeen: firstSeen = new Date().getTime()
      });
+
      console.log("New object:");
      console.log("Lat: " + newData[i].lat);
      console.log("Lng: " + newData[i].lng);
      console.log("Tipo evento: " + newData[i].type);
-
+   }
+   if (!found && counter < 5){
      //Notify
      var type = newData[i].type;
      if (type == 115) {
@@ -187,18 +191,15 @@ function checkUpdates() {
            } else {
              message += res[0].formattedAddress;
              console.log(res);
-             //TODO: fix coordinates error
              lat = res[0].latitude;
              long = res[0].longitude;
            }
            for (var i = 0; i < users.length; i++) { //Loop through all users
-             //TODO: Check type and latlon
-
+             //Todo: check distance
             if (users[i].type == type || users[i].type == "all") {
               bot.sendMessage(users[i].chat.id, message, {parse_mode : "HTML"}).then((function(cid, lat, long) {
                 bot.sendLocation(cid, lat, long);
               })(users[i].chat.id, lat, long));
-
             }
            }
 
