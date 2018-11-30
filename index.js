@@ -4,10 +4,11 @@ const token =  fs.readFileSync('token', 'utf8').trim();
 const chatid =  fs.readFileSync('data/chatid', 'utf8').trim();
 const execSync = require('child_process').execSync;
 var NodeGeocoder = require('node-geocoder');
+var oldData, newData;
 
 // Create a bot that uses 'polling' to fetch new updates
 const bot = new TelegramBot(token, {polling: true});
-bot.sendMessage(chatid, "Bot started");
+
 
 var gcoptions = {
   provider: 'openstreetmap',
@@ -19,8 +20,116 @@ var gcoptions = {
 var geocoder = NodeGeocoder(gcoptions);
 var users = JSON.parse(fs.readFileSync("data/users.json"));
 
+function saveUsers() {
+  fs.writeFileSync('data/users.json', JSON.stringify(users));
+}
+
+function getUserIndexByChat(chat) {
+  // console.log(chat);
+  // console.log(users);
+  //Search user
+
+  for (var i = 0; i < users.length; i++)
+    if (users[i].chat.id == chat.id)
+      return i;
+
+  //Add new user
+  var newEntry = {
+    chat: chat,
+    location: null,
+    radius: null,
+    type: null
+  };
+
+  users.push(newEntry);
+  saveUsers();
+  console.log("New user:");
+  console.log(newEntry);
+  return users.length - 1;
+}
+
+bot.onText(/help/, (msg, match) => {
+  bot.sendMessage(msg.chat.id, "Comandi disponibili:\n/start configura le notifiche\n/stop arresta il bot\n/list stampa la configurazione dell'utente\n/ping verifica che il bot sia online\n/stats statistiche sul bot");
+});
+
 bot.onText(/ping/, (msg, match) => {
   bot.sendMessage(msg.chat.id, "pong");
+});
+
+bot.onText(/list/, (msg, match) => {
+  bot.sendMessage(msg.chat.id, "Configurazione\n" + JSON.stringify(users[getUserIndexByChat(msg.chat)], null, 2));
+});
+
+bot.onText(/stats/, (msg, match) => {
+  var interventi = oldData.length;
+  var utenti = users.length;
+  var utentiAttivi = utenti;
+  bot.sendMessage(msg.chat.id, "Statistiche\nInterventi presenti: " + interventi + "\nUtenti: " + utenti);
+});
+
+bot.onText(/start/, (msg, match) => {
+  //Fresh start
+  var i = getUserIndexByChat(msg.chat);
+  users[i].location = null;
+  users[i].radius = null;
+  users[i].type = null;
+  saveUsers();
+  bot.sendMessage(msg.chat.id, "Inviami la posizione che ti interessa.");
+});
+
+bot.onText(/stop/, (msg, match) => {
+  users[getUserIndexByChat(msg.chat)].type = null;
+  saveUsers();
+  bot.sendMessage(msg.chat.id, "Impostazioni eliminate. Digita /start per reimpostare le notifiche.");
+});
+
+bot.on('location', (msg) => {
+  users[getUserIndexByChat(msg.chat)].location = msg.location;
+  var replyOptions = {
+    reply_markup: {
+      resize_keyboard: true,
+      one_time_keyboard: true,
+      keyboard: [
+        ['1', '5'],
+        ['10', '20']
+      ],
+    },
+  };
+  bot.sendMessage(msg.chat.id, "Scrivimi il raggio in km dell'area che ti interessa.", replyOptions);
+});
+
+bot.on('message', (msg) => {
+  if (!isNaN(msg.text) && users[0].radius == null) {
+    //Set radius
+    var rad = parseInt(msg.text, 10);
+    rad = (rad < 100 ? rad : 100);
+    users[getUserIndexByChat(msg.chat)].radius = rad;
+    var replyOptions = {
+      reply_markup: {
+        resize_keyboard: true,
+        one_time_keyboard: true,
+        keyboard: [
+          ['115 🚒'],
+          ['118 🚑'],
+          ['Tutti 🚒🚑'],
+        ],
+      }
+    };
+    bot.sendMessage(msg.chat.id, 'Seleziona il corpo per cui vuoi ricevere aggiornamenti', replyOptions);
+  }
+  if (msg.text == "115 🚒" || msg.text == "118 🚑" || msg.text == "Tutti 🚒🚑") {
+    if (msg.text == "115 🚒") users[getUserIndexByChat(msg.chat)].type = "115";
+    if (msg.text == "118 🚑") users[getUserIndexByChat(msg.chat)].type = "118";
+    if (msg.text == "Tutti 🚒🚑") users[getUserIndexByChat(msg.chat)].type = "all";
+    //Save settings
+    var replyOptions = {
+      reply_markup: {
+        hide_keyboard: true
+      }
+    };
+    saveUsers();
+    bot.sendMessage(msg.chat.id, 'Impostazioni salvate ✅', replyOptions);
+  }
 });
 
 bot.onText(/\/setradius (.+)/, (msg, match) => {
@@ -32,44 +141,12 @@ bot.onText(/\/setradius (.+)/, (msg, match) => {
 });
 
 
-bot.on('location', (msg) => {
-  console.log(msg.location.latitude);
-  console.log(msg.location.longitude);
-
-  var newEntry = {
-    chat: msg.chat,
-    location: msg.location,
-    radius: 1,
-    type: "all"
-  };
-
-  console.log(newEntry);
-  //Search user
-  var found = false;
-  for (var i = 0; i < users.length && !found; i++) {
-    if (users[i].chat.id == newEntry.chat.id) { //If the user is found overwrite it, without altering radius and type
-      newEntry.radius = users[i].radius;
-      newEntry.type = users[i].type;
-      users[i] = newEntry;
-      found = true; //Invalidate looping condition and mark as found
-    }
-  }
-  if (!found) { //If user is not found add it
-    users.push(newEntry);
-  }
-
-  console.log(users);
-  //Save new users file
-  fs.writeFileSync('data/users.json', JSON.stringify(users));
-
-});
-
 function checkUpdates() {
   console.log("Downloading data...");
   code = execSync('./parser.sh');
   console.log("Checking...");
-  var newData = JSON.parse(fs.readFileSync("data/newData.json"));
-  var oldData = JSON.parse(fs.readFileSync("data/oldData.json"));
+  newData = JSON.parse(fs.readFileSync("data/newData.json"));
+  oldData = JSON.parse(fs.readFileSync("data/oldData.json"));
 
   for (var i = 0; i < newData.length; i++) {
    var found = false;
@@ -93,7 +170,8 @@ function checkUpdates() {
      console.log("Tipo evento: " + newData[i].type);
 
      //Notify
-     if (newData[i].type == 115) {
+     var type = newData[i].type;
+     if (type == 115) {
        message = "<b>Evento 115</b> 🚒\n";
      } else {
        message = "<b>Evento 118</b> 🚑\n";
@@ -101,19 +179,30 @@ function checkUpdates() {
      lat =  newData[i].lat;
      long =  newData[i].lng;
      geocoder.reverse({lat: newData[i].lat, lon: newData[i].lng}, function(err, res) {
-       (function (message, lat, long) {
-         if (err) {
-           console.log("Error");
-           console.log(err);
-           message += "Lat: " + newData[i].lat + "\nLon: " + newData[i].lng;
-         } else {
-           message += res[0].formattedAddress;
-           console.log(res);
-         }
-         bot.sendMessage(chatid, message, {parse_mode : "HTML"}).then(() => {
-           bot.sendLocation(chatid, lat, long);
-         });
-       })(message, lat, long);
+         (function (message, type) {
+           if (err) {
+             console.log("Error");
+             console.log(err);
+             message += "Lat: " + newData[i].lat + "\nLon: " + newData[i].lng;
+           } else {
+             message += res[0].formattedAddress;
+             console.log(res);
+             //TODO: fix coordinates error
+             lat = res[0].latitude;
+             long = res[0].longitude;
+           }
+           for (var i = 0; i < users.length; i++) { //Loop through all users
+             //TODO: Check type and latlon
+
+            if (users[i].type == type || users[i].type == "all") {
+              bot.sendMessage(users[i].chat.id, message, {parse_mode : "HTML"}).then((function(cid, lat, long) {
+                bot.sendLocation(cid, lat, long);
+              })(users[i].chat.id, lat, long));
+
+            }
+           }
+
+         })(message, type);
      });
    }
   }
