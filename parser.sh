@@ -31,7 +31,7 @@ cat eventi12.js | sed 's/icon: .*115.*png./type: 115/g' | sed 's/icon: .*118.*pn
 #Trasforma in Array
 echo "[" | cat - eventi13.js > eventi14.js
 echo "]" | cat eventi14.js - > eventi15.js
-cat eventi15.js | sed 's/lat/"lat"/g' | sed 's/lng/"lng"/g' | sed 's/type/"type"/g'  > eventi16.js
+cat eventi15.js | sed 's/lat/"lat"/g' | sed 's/lng/"lon"/g' | sed 's/type/"type"/g'  > eventi16.js
 echo "Converting JS to JSON..."
 cp eventi16.js data/newData.json
 rm event*

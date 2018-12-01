@@ -17,6 +17,7 @@
   },
   "homepage": "https://github.com/NicoVarg99/infovolontariato-bot#readme",
   "dependencies": {
+    "geo-distance": "^0.2.0",
     "node-geocoder": "^3.22.0",
     "node-telegram-bot-api": "^0.30.0"
   }
