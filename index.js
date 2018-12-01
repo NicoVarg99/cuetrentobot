@@ -3,13 +3,13 @@ const TelegramBot = require('node-telegram-bot-api');
 const token =  fs.readFileSync('token', 'utf8').trim();
 const chatid =  fs.readFileSync('data/chatid', 'utf8').trim();
 const execSync = require('child_process').execSync;
+const { exec } = require('child_process');
 var NodeGeocoder = require('node-geocoder');
 var Distance = require('geo-distance');
-var oldData, newData;
+var oldData = [], newData = [];
 
 // Create a bot that uses 'polling' to fetch new updates
 const bot = new TelegramBot(token, {polling: true});
-
 
 var gcoptions = {
   provider: 'openstreetmap',
@@ -133,12 +133,28 @@ bot.on('message', (msg) => {
   }
 });
 
-function checkUpdates() {
+function parseData() {
   console.log("Downloading data...");
-  code = execSync('./parser.sh');
-  console.log("Checking...");
-  newData = JSON.parse(fs.readFileSync("data/newData.json"));
-  oldData = JSON.parse(fs.readFileSync("data/oldData.json"));
+  exec('./parser.sh', (err, stdout, stderr) => {
+    if (err) {
+      // node couldn't execute the command
+      return;
+    }
+
+    // the *entire* stdout and stderr (buffered)
+    // console.log(`stdout: ${stdout}`);
+    // console.log(`stderr: ${stderr}`);
+    newData = JSON.parse(fs.readFileSync("data/newData.json"));
+    oldData = JSON.parse(fs.readFileSync("data/oldData.json"));
+    console.log("Data downloaded.");
+    checkUpdates();
+  });
+
+}
+
+function checkUpdates() {
+  // parseData();
+  console.log("Checking...    checkUpdates()");
 
   var counter = 0; //Counts new events
   for (var i = 0; i < newData.length; i++) {
@@ -213,7 +229,7 @@ function checkUpdates() {
   //Save oldData to file
   fs.writeFileSync('data/oldData.json', JSON.stringify(oldData));
   console.log(oldData.length + " objects written to file. Restarting in 60 seconds.");
-  setTimeout(function() {checkUpdates()}, 60000);
+  setTimeout(function() {parseData()}, 60000);
 }
 
-checkUpdates();
+parseData();
