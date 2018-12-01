@@ -100,11 +100,11 @@ bot.on('location', (msg) => {
 bot.on('message', (msg) => {
   //Log message
   fs.appendFile('data/messages.log', msg.chat.id + ": " + msg.text + "\n", function (err) {
-    if (err) throw err;
+    // if (err) throw err;
     // console.log('Saved!');
   });
 
-  if (!isNaN(msg.text) && users[0].radius == null) {
+  if (!isNaN(msg.text) && users[getUserIndexByChat(msg.chat)].radius == null) {
     //Set radius
     var rad = parseInt(msg.text, 10);
     rad = (rad < 1000 ? rad : 1000);
@@ -195,13 +195,14 @@ function checkUpdates() {
      lat =  newData[i].lat;
      long =  newData[i].lon;
      geocoder.reverse({lat: newData[i].lat, lon: newData[i].lon}, function(err, res) {
-         (function (message, type) {
+         (function (mess, type) {
+           console.log("begin mess = " + mess);
            if (err) {
              console.log("Error");
              console.log(err);
-             message += "Lat: " + newData[i].lat + "\nLon: " + newData[i].lon;
+             mess += "Lat: " + newData[i].lat + "\nLon: " + newData[i].lon;
            } else {
-             message += res[0].formattedAddress;
+             mess += res[0].formattedAddress;
              //console.log(res);
              lat = res[0].latitude;
              long = res[0].longitude;
@@ -211,19 +212,29 @@ function checkUpdates() {
              lon: long
            };
            for (var i = 0; i < users.length; i++) { //Loop through all users
-              //Todo: check distance
-              var user = {
-                lat: users[i].location.latitude,
-                lon: users[i].location.longitude
-              };
-              var usertoevent = Distance.between(user, event);
-              var distance = (usertoevent <= Distance(users[i].radius + " km"));
-              message = message.substr(0, 20) + " a " + usertoevent.human_readable() + message.substr(20, 1000);
-              if ((users[i].type == type || users[i].type == "all") && distance) {
-                bot.sendMessage(users[i].chat.id, message, {parse_mode : "HTML"}).then((function(cid, lat, long) {
-                  bot.sendLocation(cid, lat, long);
-                })(users[i].chat.id, lat, long));
-              }
+             console.log("for iter = " + mess);
+             (function (mess) {
+               //Todo: check distance
+               if (!users[i].location || !users[i].type || !users[i].radius)
+                return;
+
+               var user = {
+                 lat: users[i].location.latitude,
+                 lon: users[i].location.longitude
+               };
+               var usertoevent = Distance.between(user, event);
+               var distance = (usertoevent <= Distance(users[i].radius + " km"));
+               // console.log("mess_pre = " + mess);
+               // console.log("message_pre = " + message);
+               mess = mess.substr(0, 20) + " a " + usertoevent.human_readable() + mess.substr(20, 1000);
+               // console.log("mess_aft = " + mess);
+               // console.log("message_aft = " + message);
+               if ((users[i].type == type || users[i].type == "all") && distance) {
+                 bot.sendMessage(users[i].chat.id, mess, {parse_mode : "HTML"}).then((function(cid, lat, long) {
+                   bot.sendLocation(cid, lat, long);
+                 })(users[i].chat.id, lat, long));
+               }
+             })(mess);
            }
          })(message, type);
      });
