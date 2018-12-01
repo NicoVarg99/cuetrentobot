@@ -1,7 +1,6 @@
-var fs = require("fs");
+const fs = require("fs");
 const TelegramBot = require('node-telegram-bot-api');
 const token =  fs.readFileSync('token', 'utf8').trim();
-const chatid =  fs.readFileSync('data/chatid', 'utf8').trim();
 const execSync = require('child_process').execSync;
 const { exec } = require('child_process');
 var NodeGeocoder = require('node-geocoder');
@@ -11,10 +10,9 @@ var oldData = [], newData = [];
 // Create a bot that uses 'polling' to fetch new updates
 const bot = new TelegramBot(token, {polling: true});
 
-var gcoptions = {
+var gcoptions = { //NodeGeocoder options
   provider: 'openstreetmap',
-  // Optional depending on the providers
-  httpAdapter: 'https', // Default
+  httpAdapter: 'https',
   formatter: null         // 'gpx', 'string', ...
 };
 
@@ -100,6 +98,12 @@ bot.on('location', (msg) => {
 });
 
 bot.on('message', (msg) => {
+  //Log message
+  fs.appendFile('data/messages.log', msg.chat.id + ": " + msg.text + "\n", function (err) {
+    if (err) throw err;
+    // console.log('Saved!');
+  });
+
   if (!isNaN(msg.text) && users[0].radius == null) {
     //Set radius
     var rad = parseInt(msg.text, 10);
@@ -180,7 +184,7 @@ function checkUpdates() {
      console.log("lon: " + newData[i].lon);
      console.log("Tipo evento: " + newData[i].type);
    }
-   if (!found && counter < 5){
+   if (!found && counter < 10 + 1){
      //Notify
      var type = newData[i].type;
      if (type == 115) {
