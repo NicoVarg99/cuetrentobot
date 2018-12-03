@@ -6,6 +6,8 @@ const { exec } = require('child_process');
 var NodeGeocoder = require('node-geocoder');
 var Distance = require('geo-distance');
 var oldData = [], newData = [];
+var users = JSON.parse(fs.readFileSync("data/users.json"));
+var adminId = fs.readFileSync("data/adminid");
 
 // Create a bot that uses 'polling' to fetch new updates
 const bot = new TelegramBot(token, {polling: true});
@@ -17,7 +19,10 @@ var gcoptions = { //NodeGeocoder options
 };
 
 var geocoder = NodeGeocoder(gcoptions);
-var users = JSON.parse(fs.readFileSync("data/users.json"));
+
+function isUserActive(user) {
+  return (user.location && user.radius && user.type);
+}
 
 function saveUsers() {
   fs.writeFileSync('data/users.json', JSON.stringify(users));
@@ -53,35 +58,38 @@ function getUserIndexByChat(chat) {
 }
 
 bot.onText(/help/, (msg, match) => {
-  bot.sendMessage(msg.chat.id, "Comandi disponibili:\n/start configura le notifiche\n/stop arresta il bot\n/list stampa la configurazione dell'utente\n/ping verifica che il bot sia online\n/stats statistiche sul bot");
+  bot.sendMessage(msg.chat.id, "Comandi disponibili:\n/start configura le notifiche\n/stop arresta il bot\n/config stampa la configurazione dell'utente\n/ping verifica che il bot sia online\n/stats statistiche sul bot");
 });
 
 bot.onText(/ping/, (msg, match) => {
-
-
-  bot.sendMessage(msg.chat.id, "pong").then(function(resp) {
-  // ...snip...
-
-  }).catch(function(error) {
-    if (error.response && error.response.statusCode === 403) {
-
-
-      console.log("User blocked bot - Deleting user " + msg.chat.id);
-      deleteUserByChat(msg.chat);
-    }
-  });
-
+  bot.sendMessage(msg.chat.id, "pong");
 });
 
-bot.onText(/list/, (msg, match) => {
+bot.onText(/config/, (msg, match) => {
   bot.sendMessage(msg.chat.id, "Configurazione\n" + JSON.stringify(users[getUserIndexByChat(msg.chat)], null, 2));
+});
+
+bot.onText(/listall/, (msg, match) => {
+  if (msg.chat.id == adminId) {
+    bot.sendMessage(msg.chat.id, JSON.stringify(users), null, 2));
+  } else {
+    bot.sendMessage(msg.chat.id, "Utente non autorizzato.", null, 2));
+  }
 });
 
 bot.onText(/stats/, (msg, match) => {
   var interventi = oldData.length;
-  var utenti = users.length;
-  var utentiAttivi = utenti;
-  bot.sendMessage(msg.chat.id, "Statistiche\nInterventi presenti: " + interventi + "\nUtenti: " + utenti);
+  var utentiAttivi = 0;
+
+  for (var i = 0; i < users.length; i++)
+    if (isUserActive(users[i]))
+      utentiAttivi++;
+
+  var message = "<b>Statistiche</b>\nEventi aperti: " + interventi + "\n";
+  message += "Eventi chiusi: " + 0 + "\n";
+  message += "Utenti attivi: " + utentiAttivi + "\n";
+  message += "Utenti non attivi: " + (users.length - utentiAttivi) + "\n";
+  bot.sendMessage(msg.chat.id, message, {parse_mode : "HTML"});
 });
 
 bot.onText(/start/, (msg, match) => {
