@@ -66,14 +66,18 @@ bot.onText(/ping/, (msg, match) => {
 });
 
 bot.onText(/config/, (msg, match) => {
-  bot.sendMessage(msg.chat.id, "Configurazione\n" + JSON.stringify(users[getUserIndexByChat(msg.chat)], null, 2));
+  var message = "Configurazione\n" + JSON.stringify(users[getUserIndexByChat(msg.chat)], null, 2);
+  bot.sendMessage(msg.chat.id, message);
 });
 
 bot.onText(/listall/, (msg, match) => {
   if (msg.chat.id == adminId) {
-    bot.sendMessage(msg.chat.id, JSON.stringify(users), null, 2));
+    var message = "Configurazione\n" + JSON.stringify(users[getUserIndexByChat(msg.chat)], null, 2);
+    bot.sendMessage(msg.chat.id, message);
+    var message = "Utenti: " + JSON.stringify(users, null, 2);
+    bot.sendMessage(msg.chat.id, message);
   } else {
-    bot.sendMessage(msg.chat.id, "Utente non autorizzato.", null, 2));
+    bot.sendMessage(msg.chat.id, "Utente non autorizzato.");
   }
 });
 
