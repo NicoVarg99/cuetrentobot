@@ -23,6 +23,11 @@ function saveUsers() {
   fs.writeFileSync('data/users.json', JSON.stringify(users));
 }
 
+function deleteUserByChat(chat) {
+  users[getUserIndexByChat(chat)].type = null;
+  saveUsers();
+}
+
 function getUserIndexByChat(chat) {
   // console.log(chat);
   // console.log(users);
@@ -52,7 +57,20 @@ bot.onText(/help/, (msg, match) => {
 });
 
 bot.onText(/ping/, (msg, match) => {
-  bot.sendMessage(msg.chat.id, "pong");
+
+
+  bot.sendMessage(msg.chat.id, "pong").then(function(resp) {
+  // ...snip...
+
+  }).catch(function(error) {
+    if (error.response && error.response.statusCode === 403) {
+
+
+      console.log("User blocked bot - Deleting user " + msg.chat.id);
+      deleteUserByChat(msg.chat);
+    }
+  });
+
 });
 
 bot.onText(/list/, (msg, match) => {
@@ -77,8 +95,7 @@ bot.onText(/start/, (msg, match) => {
 });
 
 bot.onText(/stop/, (msg, match) => {
-  users[getUserIndexByChat(msg.chat)].type = null;
-  saveUsers();
+  deleteUserByChat(msg.chat);
   bot.sendMessage(msg.chat.id, "Impostazioni eliminate. Digita /start per reimpostare le notifiche.");
 });
 
@@ -213,11 +230,9 @@ function checkUpdates() {
              lon: long
            };
            for (var i = 0; i < users.length; i++) { //Loop through all users
-             console.log("for iter = " + mess);
-             (function (mess) {
-               //Todo: check distance
-               if (!users[i].location || !users[i].type || !users[i].radius)
-               return;
+             (function (mess, i) {
+               if (!users[i].location || !users[i].type || !users[i].radius) //If user is not properly set, skip it
+                return;
 
                var user = {
                  lat: users[i].location.latitude,
@@ -226,19 +241,27 @@ function checkUpdates() {
                var usertoevent = Distance.between(user, event);
                var distance = (usertoevent <= Distance(users[i].radius + " km"));
                mess = mess.substr(0, 20) + " a " + usertoevent.human_readable() + mess.substr(20, 1000);
-               if ((users[i].type == type || users[i].type == "all") && distance)
-                 bot.sendMessage(users[i].chat.id, mess, {parse_mode : "HTML"}).then((function(cid, lat, long) {
-                   bot.sendLocation(cid, lat, long);
-                 })(users[i].chat.id, lat, long));
-             })(mess);
+               if ((users[i].type == type || users[i].type == "all") && distance) { //Try sending message if user is in the radius
+                 bot.sendMessage(users[i].chat.id, mess, {parse_mode : "HTML"}).then((function(cid, lat, long) { //Send message to user
+                   bot.sendLocation(cid, lat, long); //If successful send location
+                   console.log("1 - " + users[i].chat + " " + cid + "" + users[i].chat.id);
+                 })(users[i].chat.id, lat, long)).catch(
+                   function(error) {
+                     if (error.response && error.response.statusCode === 403) { //If user blocked bot delete it
+                       console.log(users[i].chat);
+                       console.log("User blocked bot - Deleting user " + users[i].chat);
+                       deleteUserByChat(users[i].chat);
+                     }
+                   }
+                 );
+               }
+             })(mess, i);
            }
          })(message, type);
        });
      })(message, newData[i]);
-
    }
   }
-
   //Save oldData to file
   fs.writeFileSync('data/oldData.json', JSON.stringify(oldData));
   console.log(oldData.length + " objects written to file. Restarting in 60 seconds.");

@@ -11,7 +11,6 @@ fi
 
 echo "Fetching data..."
 
-
 CURLOUTPUT=$(curl -s -m 50 https://secure.provincia.tn.it/infovolontariato/Emergenze/Eventi.aspx)
 CURLSUCCESS=$?
 
