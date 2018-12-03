@@ -1,6 +1,6 @@
 const fs = require("fs");
 const TelegramBot = require('node-telegram-bot-api');
-const token =  fs.readFileSync('token', 'utf8').trim();
+const token =  fs.readFileSync('data/token', 'utf8').trim();
 const execSync = require('child_process').execSync;
 const { exec } = require('child_process');
 var NodeGeocoder = require('node-geocoder');
