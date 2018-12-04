@@ -90,17 +90,33 @@ bot.onText(/listall/, (msg, match) => {
 });
 
 bot.onText(/stats/, (msg, match) => {
-  var utentiAttivi = 0;
 
-  for (var i = 0; i < users.length; i++)
+  exec('echo 1.$(git rev-list --count HEAD).$(git log --pretty=format:\'%h\' -n 1 )', (err, stdout, stderr) => {
+    if (err) {
+      // node couldn't execute the command
+      return;
+    }
+
+    // the *entire* stdout and stderr (buffered)
+    // console.log(`stdout: ${stdout}`);
+    // console.log(`stderr: ${stderr}`);
+    var utentiAttivi = 0;
+
+    for (var i = 0; i < users.length; i++)
     if (isUserActive(users[i]))
-      utentiAttivi++;
+    utentiAttivi++;
 
-  var message = "<b>Statistiche</b>\nEventi aperti: " + oldData.length + "\n";
-  message += "Eventi chiusi: " + closedData.length + "\n";
-  message += "Utenti attivi: " + utentiAttivi + "\n";
-  message += "Utenti non attivi: " + (users.length - utentiAttivi) + "\n";
-  bot.sendMessage(msg.chat.id, message, {parse_mode : "HTML"});
+    var message = "<b>Statistiche</b>\n";
+    message += "Versione: " + stdout;
+    message += "Eventi aperti: " + oldData.length + "\n";
+    message += "Eventi chiusi: " + closedData.length + "\n";
+    message += "Utenti attivi: " + utentiAttivi + "\n";
+    message += "Utenti non attivi: " + (users.length - utentiAttivi) + "\n";
+    bot.sendMessage(msg.chat.id, message, {parse_mode : "HTML"});
+
+  });
+
+
 });
 
 bot.onText(/start/, (msg, match) => {
