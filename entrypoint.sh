@@ -1,5 +1,7 @@
 #!/bin/bash
 
+cd "${0%/*}"
+
 # while true; do
   # bash "./parser.sh"
   node "index.js"

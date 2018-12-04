@@ -9,6 +9,10 @@ if [ ! -f "data/users.json" ]; then
   echo "[]" > "data/users.json"
 fi
 
+if [ ! -f "data/closedData.json" ]; then
+  echo "[]" > "data/closedData.json"
+fi
+
 echo "Fetching data..."
 
 CURLOUTPUT=$(curl -s -m 50 https://secure.provincia.tn.it/infovolontariato/Emergenze/Eventi.aspx)

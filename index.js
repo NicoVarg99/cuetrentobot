@@ -5,7 +5,7 @@ const execSync = require('child_process').execSync;
 const { exec } = require('child_process');
 var NodeGeocoder = require('node-geocoder');
 var Distance = require('geo-distance');
-var oldData = [], newData = [];
+var oldData = [], newData = [], closedData = [];
 var users = JSON.parse(fs.readFileSync("data/users.json"));
 var adminId = fs.readFileSync("data/adminid");
 
@@ -19,6 +19,14 @@ var gcoptions = { //NodeGeocoder options
 };
 
 var geocoder = NodeGeocoder(gcoptions);
+
+function compareEvents_unsafe(event1, event2) {
+  return (event1.lat == event2.lat && event1.lon == event2.lon && event1.type == event2.type);
+}
+
+// function compareEvents_safe() {
+//   //TODO: check time
+// }
 
 function isUserActive(user) {
   return (user.location && user.radius && user.type);
@@ -82,15 +90,14 @@ bot.onText(/listall/, (msg, match) => {
 });
 
 bot.onText(/stats/, (msg, match) => {
-  var interventi = oldData.length;
   var utentiAttivi = 0;
 
   for (var i = 0; i < users.length; i++)
     if (isUserActive(users[i]))
       utentiAttivi++;
 
-  var message = "<b>Statistiche</b>\nEventi aperti: " + interventi + "\n";
-  message += "Eventi chiusi: " + 0 + "\n";
+  var message = "<b>Statistiche</b>\nEventi aperti: " + oldData.length + "\n";
+  message += "Eventi chiusi: " + closedData.length + "\n";
   message += "Utenti attivi: " + utentiAttivi + "\n";
   message += "Utenti non attivi: " + (users.length - utentiAttivi) + "\n";
   bot.sendMessage(msg.chat.id, message, {parse_mode : "HTML"});
@@ -166,6 +173,39 @@ bot.on('message', (msg) => {
   }
 });
 
+function deleteClosedEvents() {
+  closedData = JSON.parse(fs.readFileSync("data/closedData.json"));
+
+  if (!oldData.length || !newData.length) //If data is empty do not delete old events
+    return;
+
+  var closedEvents = 0;
+
+  //If events in oldData are missing in newData, close them.
+  for (var i = 0; i < oldData.length; i++) {
+    var found = false;
+
+    for (var j = 0; j < newData.length; j++)
+      if (compareEvents_unsafe(oldData[i], newData[j]))
+        found = true;
+
+    if (!found) { //old event not found in newdata, delete oldData[i]
+      console.log("Deleting event: ");
+      console.log(oldData[i]);
+      closedData.push(oldData[i]); //Add oldData[i] to closed events
+      oldData.splice(i, 1); //Delete element i from open events
+      i--; //oldData.length gets reduced by 1, decrease index to avoid skipping elements
+      closedEvents++;
+    }
+  }
+
+  console.log(closedEvents + " closed events.");
+
+  //Write to file closed Events
+  fs.writeFileSync('data/closedData.json', JSON.stringify(closedData));
+
+}
+
 function parseData() {
   console.log("Downloading data...");
   exec('./parser.sh', (err, stdout, stderr) => {
@@ -216,16 +256,12 @@ function checkUpdates() {
    if (!found && counter < 10 + 1){
      //Notify
      var type = newData[i].type;
-     if (type == 115) {
-       message = "<b>Evento 115</b> 🚒\n";
-     } else {
-       message = "<b>Evento 118</b> 🚑\n";
-     }
-     lat =  newData[i].lat;
-     long =  newData[i].lon;
+     var message = (type == 115 ? "<b>Evento 115</b> 🚒\n" : "<b>Evento 118</b> 🚑\n");
+     var lat =  newData[i].lat;
+     var long =  newData[i].lon;
 
-     (function(message, newDatai) {
-       geocoder.reverse({lat: newData[i].lat, lon: newData[i].lon}, function(err, res) {
+     (function(message, lat, longs) {
+       geocoder.reverse({lat: lat, lon: long}, function(err, res) {
          (function (mess, type) {
            if (err) {
              console.log("Error");
@@ -243,7 +279,7 @@ function checkUpdates() {
            };
            for (var i = 0; i < users.length; i++) { //Loop through all users
              (function (mess, i) {
-               if (!users[i].location || !users[i].type || !users[i].radius) //If user is not properly set, skip it
+               if (!isUserActive(users[i])) //If user is not properly set, skip it
                 return;
 
                var user = {
@@ -256,13 +292,13 @@ function checkUpdates() {
                if ((users[i].type == type || users[i].type == "all") && distance) { //Try sending message if user is in the radius
                  bot.sendMessage(users[i].chat.id, mess, {parse_mode : "HTML"}).then((function(cid, lat, long) { //Send message to user
                    bot.sendLocation(cid, lat, long); //If successful send location
-                   console.log("1 - " + users[i].chat + " " + cid + "" + users[i].chat.id);
                  })(users[i].chat.id, lat, long)).catch(
                    function(error) {
-                     if (error.response && error.response.statusCode === 403) { //If user blocked bot delete it
-                       console.log(users[i].chat);
-                       console.log("User blocked bot - Deleting user " + users[i].chat);
-                       deleteUserByChat(users[i].chat);
+                     if (error.response) {
+                       if (error.response.statusCode === 403 || error.response.statusCode === 404) { //If user blocked bot (or deleted the account) delete it
+                         console.log("User blocked bot - Deleting user " + users[i].chat);
+                         deleteUserByChat(users[i].chat);
+                       }
                      }
                    }
                  );
@@ -271,10 +307,11 @@ function checkUpdates() {
            }
          })(message, type);
        });
-     })(message, newData[i]);
+     })(message, lat, long);
    }
   }
   //Save oldData to file
+  deleteClosedEvents();
   fs.writeFileSync('data/oldData.json', JSON.stringify(oldData));
   console.log(oldData.length + " objects written to file. Restarting in 60 seconds.");
   setTimeout(function() {parseData()}, 60000);
