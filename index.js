@@ -8,7 +8,7 @@ var Distance = require('geo-distance');
 var oldData = [], newData = [], closedData = [];
 var users = JSON.parse(fs.readFileSync("data/users.json"));
 var adminId = fs.readFileSync("data/adminid");
-
+const maxRadius = 100;
 // Create a bot that uses 'polling' to fetch new updates
 const bot = new TelegramBot(token, {polling: true});
 
@@ -126,7 +126,7 @@ bot.onText(/start/, (msg, match) => {
   users[i].radius = null;
   users[i].type = null;
   saveUsers();
-  bot.sendMessage(msg.chat.id, "Inviami la tua posizione.");
+  bot.sendMessage(msg.chat.id, "Inviami la tua posizione, così potrò aggiornarti degli eventi nelle tue vicinanze.");
 });
 
 bot.onText(/stop/, (msg, match) => {
@@ -159,8 +159,8 @@ bot.on('message', (msg) => {
   if (!isNaN(msg.text) && users[getUserIndexByChat(msg.chat)].radius == null) {
     //Set radius
     var rad = parseInt(msg.text, 10);
-    rad = (rad < 1000 ? rad : 1000);
-    users[getUserIndexByChat(msg.chat)].radius = rad;
+
+    users[getUserIndexByChat(msg.chat)].radius = (rad <= maxRadius ? rad : maxRadius);
     var replyOptions = {
       reply_markup: {
         resize_keyboard: true,
@@ -172,7 +172,16 @@ bot.on('message', (msg) => {
         ],
       }
     };
-    bot.sendMessage(msg.chat.id, 'Seleziona il corpo per cui vuoi ricevere aggiornamenti.', replyOptions);
+
+    if (rad > maxRadius) {
+      bot.sendMessage(msg.chat.id, 'Il raggio selezionato eccede il massimo consentito.\nHo modificato il tuo raggio a ' + maxRadius + ' km.', replyOptions).then(() => {
+        bot.sendMessage(msg.chat.id, 'Seleziona il corpo per cui vuoi ricevere aggiornamenti.', replyOptions);
+      });
+    } else {
+      bot.sendMessage(msg.chat.id, 'Seleziona il corpo per cui vuoi ricevere aggiornamenti.', replyOptions);
+    }
+
+    // bot.sendMessage(msg.chat.id, 'Seleziona il corpo per cui vuoi ricevere aggiornamenti.', replyOptions);
   }
   if (msg.text == "115 🚒" || msg.text == "118 🚑" || msg.text == "Tutti 🚒🚑") {
     if (msg.text == "115 🚒") users[getUserIndexByChat(msg.chat)].type = "115";
@@ -185,7 +194,7 @@ bot.on('message', (msg) => {
       }
     };
     saveUsers();
-    bot.sendMessage(msg.chat.id, 'Impostazioni salvate ✅', replyOptions);
+    bot.sendMessage(msg.chat.id, 'Impostazioni salvate ✅\nDigita /start per modificarle\nDigita /stop per smettere di ricevere aggiornamenti.', replyOptions);
   }
 });
 
