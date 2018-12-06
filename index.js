@@ -88,18 +88,18 @@ bot.onText(/config/, (msg, match) => {
 bot.onText(/listall/, (msg, match) => {
   if (msg.chat.id == adminId) {
     // var message = "Utenti: " + JSON.stringify(users, null, 2);
-    var message = "";
+    var message = "<b>Utenti</b>";
     for (var i = 0; i < users.length; i++) {
-      if (users[i].username) {
+      message += "\n"
+      if (users[i].chat.username) {
         message += "@" + users[i].chat.username;
       } else {
         message += users[i].chat.id;
       }
       message += (users[i].radius ? " " + users[i].radius : " null");
       message += (users[i].type ? " " + users[i].type : " null");
-
     }
-    bot.sendMessage(msg.chat.id, message);
+    bot.sendMessage(msg.chat.id, message, {parse_mode : "HTML"});
   } else {
     bot.sendMessage(msg.chat.id, "Utente non autorizzato.");
   }
