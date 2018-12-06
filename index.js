@@ -12,11 +12,18 @@ const maxRadius = 100;
 // Create a bot that uses 'polling' to fetch new updates
 const bot = new TelegramBot(token, {polling: true});
 
+var replyOptionsNoKeyboard = {
+  reply_markup: {
+    hide_keyboard: true
+  }
+};
+
 var gcoptions = { //NodeGeocoder options
   provider: 'openstreetmap',
   httpAdapter: 'https',
   formatter: null         // 'gpx', 'string', ...
 };
+
 
 var geocoder = NodeGeocoder(gcoptions);
 
@@ -66,23 +73,32 @@ function getUserIndexByChat(chat) {
 }
 
 bot.onText(/help/, (msg, match) => {
-  bot.sendMessage(msg.chat.id, "Comandi disponibili:\n/start configura le notifiche\n/stop arresta il bot\n/config stampa la configurazione dell'utente\n/ping verifica che il bot sia online\n/stats statistiche sul bot");
+  bot.sendMessage(msg.chat.id, "Comandi disponibili:\n/start configura le notifiche\n/stop arresta il bot\n/config stampa la configurazione dell'utente\n/ping verifica che il bot sia online\n/stats statistiche sul bot", replyOptionsNoKeyboard);
 });
 
 bot.onText(/ping/, (msg, match) => {
-  bot.sendMessage(msg.chat.id, "pong");
+  bot.sendMessage(msg.chat.id, "pong", replyOptionsNoKeyboard);
 });
 
 bot.onText(/config/, (msg, match) => {
   var message = "Configurazione\n" + JSON.stringify(users[getUserIndexByChat(msg.chat)], null, 2);
-  bot.sendMessage(msg.chat.id, message);
+  bot.sendMessage(msg.chat.id, message, replyOptionsNoKeyboard);
 });
 
 bot.onText(/listall/, (msg, match) => {
   if (msg.chat.id == adminId) {
-    var message = "Configurazione\n" + JSON.stringify(users[getUserIndexByChat(msg.chat)], null, 2);
-    bot.sendMessage(msg.chat.id, message);
-    var message = "Utenti: " + JSON.stringify(users, null, 2);
+    // var message = "Utenti: " + JSON.stringify(users, null, 2);
+    var message = "";
+    for (var i = 0; i < users.length; i++) {
+      if (users[i].username) {
+        message += "@" + users[i].chat.username;
+      } else {
+        message += users[i].chat.id;
+      }
+      message += (users[i].radius ? " " + users[i].radius : " null");
+      message += (users[i].type ? " " + users[i].type : " null");
+
+    }
     bot.sendMessage(msg.chat.id, message);
   } else {
     bot.sendMessage(msg.chat.id, "Utente non autorizzato.");
@@ -91,7 +107,7 @@ bot.onText(/listall/, (msg, match) => {
 
 bot.onText(/stats/, (msg, match) => {
 
-  exec('echo 1.$(git rev-list --count HEAD).$(git log --pretty=format:\'%h\' -n 1 )', (err, stdout, stderr) => {
+  exec('echo 1.$(git rev-list --count HEAD)-$(git log --pretty=format:\'%h\' -n 1 )', (err, stdout, stderr) => {
     if (err) {
       // node couldn't execute the command
       return;
@@ -172,7 +188,6 @@ bot.on('message', (msg) => {
         ],
       }
     };
-
     if (rad > maxRadius) {
       bot.sendMessage(msg.chat.id, 'Il raggio selezionato eccede il massimo consentito.\nHo modificato il tuo raggio a ' + maxRadius + ' km.', replyOptions).then(() => {
         bot.sendMessage(msg.chat.id, 'Seleziona il corpo per cui vuoi ricevere aggiornamenti.', replyOptions);
@@ -180,21 +195,14 @@ bot.on('message', (msg) => {
     } else {
       bot.sendMessage(msg.chat.id, 'Seleziona il corpo per cui vuoi ricevere aggiornamenti.', replyOptions);
     }
-
-    // bot.sendMessage(msg.chat.id, 'Seleziona il corpo per cui vuoi ricevere aggiornamenti.', replyOptions);
   }
   if (msg.text == "115 🚒" || msg.text == "118 🚑" || msg.text == "Tutti 🚒🚑") {
     if (msg.text == "115 🚒") users[getUserIndexByChat(msg.chat)].type = "115";
     if (msg.text == "118 🚑") users[getUserIndexByChat(msg.chat)].type = "118";
     if (msg.text == "Tutti 🚒🚑") users[getUserIndexByChat(msg.chat)].type = "all";
     //Save settings
-    var replyOptions = {
-      reply_markup: {
-        hide_keyboard: true
-      }
-    };
     saveUsers();
-    bot.sendMessage(msg.chat.id, 'Impostazioni salvate ✅\nDigita /start per modificarle\nDigita /stop per smettere di ricevere aggiornamenti.', replyOptions);
+    bot.sendMessage(msg.chat.id, 'Impostazioni salvate ✅\nDigita /start per modificarle\nDigita /stop per smettere di ricevere aggiornamenti.', replyOptionsNoKeyboard);
   }
 });
 
@@ -234,10 +242,7 @@ function deleteClosedEvents() {
 function parseData() {
   console.log("Downloading data...");
   exec('./parser.sh', (err, stdout, stderr) => {
-    if (err) {
-      // node couldn't execute the command
-      return;
-    }
+    if (err) return; // node couldn't execute the command
 
     // the *entire* stdout and stderr (buffered)
     // console.log(`stdout: ${stdout}`);
@@ -252,8 +257,7 @@ function parseData() {
 
 function checkUpdates() {
   // parseData();
-  console.log("Checking...    checkUpdates()");
-
+  console.log("Checking for updates");
   var counter = 0; //Counts new events
   for (var i = 0; i < newData.length; i++) {
    var found = false;
