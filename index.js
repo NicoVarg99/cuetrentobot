@@ -105,6 +105,28 @@ bot.onText(/listall/, (msg, match) => {
   }
 });
 
+// Matches "/echo [whatever]"
+bot.onText(/\/user (.+)/, (msg, match) => {
+  if (msg.chat.id == adminId) {
+    const resp = match[1]; // the captured "whatever"
+    var message = "Utente non trovato."
+    for (var i = 0; i < users.length; i++) {
+      if (users[i].chat.username == match[1] || users[i].chat.id == match[1]) {
+        message = JSON.stringify(users[i], null, 2);
+        if (users[i].location) {
+          bot.sendMessage(msg.chat.id, message).then((function(cid, lat, long) { //Send message to user
+            bot.sendLocation(cid, lat, long); //If successful send location
+          })(users[i].chat.id, users[i].location.latitude, users[i].location.longitude));
+        } else {
+          bot.sendMessage(msg.chat.id, message);
+        }
+      }
+    }
+  } else {
+    bot.sendMessage(msg.chat.id, "Utente non autorizzato.");
+  }
+});
+
 bot.onText(/stats/, (msg, match) => {
 
   exec('echo 1.$(git rev-list --count HEAD)-$(git log --pretty=format:\'%h\' -n 1 )', (err, stdout, stderr) => {
