@@ -116,7 +116,7 @@ bot.onText(/\/user (.+)/, (msg, match) => {
         if (users[i].location) {
           bot.sendMessage(msg.chat.id, message).then((function(cid, lat, long) { //Send message to user
             bot.sendLocation(cid, lat, long); //If successful send location
-          })(users[i].chat.id, users[i].location.latitude, users[i].location.longitude));
+          })(msg.chat.id, users[i].location.latitude, users[i].location.longitude));
         } else {
           bot.sendMessage(msg.chat.id, message);
         }
