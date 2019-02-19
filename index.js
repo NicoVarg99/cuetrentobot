@@ -99,7 +99,11 @@ bot.onText(/listall/, (msg, match) => {
       message += (users[i].radius ? " " + users[i].radius : " null");
       message += (users[i].type ? " " + users[i].type : " null");
     }
-    bot.sendMessage(msg.chat.id, message, {parse_mode : "HTML"});
+
+    messageSplitArray = message.match(/(.|[\r\n]){1,4000}/g);
+    for (j = 0; j < messageSplitArray.length; j++) {
+       bot.sendMessage(msg.chat.id, messageSplitArray[j], {parse_mode : "HTML"});
+    }    
   } else {
     bot.sendMessage(msg.chat.id, "Utente non autorizzato.");
   }
