@@ -103,7 +103,7 @@ bot.onText(/listall/, (msg, match) => {
     messageSplitArray = message.match(/(.|[\r\n]){1,4000}/g);
     for (j = 0; j < messageSplitArray.length; j++) {
        bot.sendMessage(msg.chat.id, messageSplitArray[j], {parse_mode : "HTML"});
-    }    
+    }
   } else {
     bot.sendMessage(msg.chat.id, "Utente non autorizzato.");
   }
@@ -314,9 +314,10 @@ function checkUpdates() {
      var message = (type == 115 ? "<b>Evento 115</b> 🚒\n" : "<b>Evento 118</b> 🚑\n");
      var lat =  newData[i].lat;
      var long =  newData[i].lon;
+     var currentEvent = newData[i];
 
      (function(message, lat, longs) {
-       geocoder.reverse({lat: lat, lon: long}, function(err, res) {
+       geocoder.reverse({lat: lat, lon: long, currentEvent: currentEvent}, function(err, res) {
          (function (mess, type) {
            if (err) {
              console.log("Error");
@@ -324,9 +325,12 @@ function checkUpdates() {
              mess += "Lat: " + newData[i].lat + "\nLon: " + newData[i].lon;
            } else {
              mess += res[0].formattedAddress;
-             //console.log(res);
-             lat = res[0].latitude;
-             long = res[0].longitude;
+             currentEvent.geocodedData = res[0];
+
+             //console.log(JSON.stringify(currentEvent));
+
+             //lat = res[0].latitude;
+             //long = res[0].longitude;
            }
            var event = {
              lat: lat,
