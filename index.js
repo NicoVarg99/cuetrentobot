@@ -9,8 +9,10 @@ var oldData = [], newData = [], closedData = [];
 var users = JSON.parse(fs.readFileSync("data/users.json"));
 var adminId = fs.readFileSync("data/adminid");
 const maxRadius = 100;
+const webhook = require("./webhook.js");
 // Create a bot that uses 'polling' to fetch new updates
 const bot = new TelegramBot(token, {polling: true});
+
 
 var replyOptionsNoKeyboard = {
   reply_markup: {
@@ -317,7 +319,7 @@ function checkUpdates() {
      var currentEvent = newData[i];
 
      (function(message, lat, longs) {
-       geocoder.reverse({lat: lat, lon: long, currentEvent: currentEvent}, function(err, res) {
+       geocoder.reverse({lat: lat, lon: long, currentEvent: currentEvent, message: message}, function(err, res) {
          (function (mess, type) {
            if (err) {
              console.log("Error");
@@ -326,11 +328,11 @@ function checkUpdates() {
            } else {
              mess += res[0].formattedAddress;
              currentEvent.geocodedData = res[0];
+             currentEvent.message = message;
 
-             //console.log(JSON.stringify(currentEvent));
+             console.log(JSON.stringify(currentEvent));
+             webhook.notify(currentEvent);
 
-             //lat = res[0].latitude;
-             //long = res[0].longitude;
            }
            var event = {
              lat: lat,
