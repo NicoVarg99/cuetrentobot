@@ -1,6 +1,6 @@
 const fs = require("fs");
 const TelegramBot = require('node-telegram-bot-api');
-const token =  fs.readFileSync('data/token', 'utf8').trim();
+const token = process.env.TOKEN;
 const execSync = require('child_process').execSync;
 const { exec } = require('child_process');
 var NodeGeocoder = require('node-geocoder');
@@ -10,9 +10,8 @@ var users = JSON.parse(fs.readFileSync("data/users.json"));
 var adminId = fs.readFileSync("data/adminid");
 const maxRadius = 100;
 const webhook = require("./webhook.js");
-// Create a bot that uses 'polling' to fetch new updates
-const bot = new TelegramBot(token, {polling: true});
 
+const bot = new TelegramBot(token, {polling: true}); // Create a bot that uses 'polling' to fetch new updates
 
 var replyOptionsNoKeyboard = {
   reply_markup: {
